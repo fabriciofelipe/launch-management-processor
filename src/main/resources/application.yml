@@ -1,0 +1,22 @@
+# Spring
+spring:
+    cloud:
+        stream:
+            default:
+               contentType: application/json
+            bindings:
+              inputPagamento:
+                destination: pagamento.request.queue
+                group: pagamento
+                durableSubscription: true
+              inputRecebimento:
+                destination: recebimento.request.queue
+                group: recebimento
+                durableSubscription: true
+            binders:
+               rabbit:
+                  type: rabbit
+                  environment:
+                    spring.rabbitmq.addresses: ${ORDERING_RABBIT:amqp://teste:teste@localhost:5672/fluxo_caixa}
+server:
+    port: 8081
