@@ -3,7 +3,7 @@ spring:
     cloud:
         stream:
             default:
-               contentType: application/json
+              contentType: application/json
             bindings:
               inputPagamento:
                 destination: pagamento.request.queue
@@ -18,5 +18,12 @@ spring:
                   type: rabbit
                   environment:
                     spring.rabbitmq.addresses: ${ORDERING_RABBIT:amqp://teste:teste@localhost:5672/fluxo_caixa}
+    jackson:
+        default-property-inclusion: non_null
+        date-format: com.fasterxml.jackson.databind.util.ISO8601DateFormat
+        serialization:
+          write_dates_as_timestamps: false
+          write_date_timestamps_as_nanoseconds: false
+          write_empty_json_arrays: false
 server:
     port: 8081

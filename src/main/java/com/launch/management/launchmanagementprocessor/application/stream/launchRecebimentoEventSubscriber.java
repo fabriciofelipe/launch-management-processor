@@ -9,17 +9,17 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class launchPagamentoEventSubscriber {
+public class launchRecebimentoEventSubscriber {
 
     private final Channels channels;
 
-    @StreamListener(value = Channels.INPUT_PAGAMENTO)
+    @StreamListener(value = Channels.INPUT_RECEBIMENTO)
     public void heandle(Launch launch){
         handler(launch);
     }
 
     private Launch handler(Launch event){
-        log.info("launchPagamentoEventSubscriber lancamento de pagamento {}", event);
+        log.info("launchRecebimentoEventSubscriber lancamento de recebimento {}", event);
         return event;
     }
 }
