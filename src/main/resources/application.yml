@@ -7,11 +7,18 @@ spring:
             bindings:
               inputPagamento:
                 destination: pagamento.request.queue
-                group: pagamento
+                group: lancamento
                 durableSubscription: true
               inputRecebimento:
                 destination: recebimento.request.queue
-                group: recebimento
+                group: lancamento
+                durableSubscription: true
+              inputFuxoCaixa:
+                destination: fluxo.caixa.request.queue
+                group: caixa
+                durableSubscription: true
+              outputFuxoCaixa:
+                destination: fluxo.caixa.request.queue
                 durableSubscription: true
             binders:
                rabbit:
