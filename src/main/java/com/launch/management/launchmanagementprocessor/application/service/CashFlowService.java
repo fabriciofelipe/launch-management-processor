@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.DoubleStream;
 
 @Slf4j
 @Service
@@ -21,7 +20,7 @@ public class CashFlowService {
 
     public void create(Launch launch){
         Optional<Launch> launchTransient = Optional.ofNullable(launch);
-        Optional<CashFlow> cashFlowRepo = cashFlowRepository.findByCpfCnpj(launch.getCpfCnpjDestino());
+        Optional<CashFlow> cashFlowRepo = cashFlowRepository.findByCpfCnpjAndData(launch.getCpfCnpjDestino(), launch.getDataLacamento());
 
         CashFlow cfTransiente = cashFlowRepo.map(cashFlow -> {
             CashFlow cf = updateCashFlow(launchTransient, cashFlow);
@@ -30,12 +29,14 @@ public class CashFlowService {
 
         cfTransiente.setTotal(totalDia(cfTransiente.getEntradas(), cfTransiente.getSaidas()));
 
+        cfTransiente.setPosicaoDia(compareDiaAtualDiaAnterior(cfTransiente));
+
         cashFlowRepository.save(cfTransiente);
     }
 
     private CashFlow insertCashFlow(Optional<Launch> launchTransient) {
         CashFlow cashFlow = CashFlow.builder()
-                .data(LocalDate.now())
+                .data(launchTransient.get().getDataLacamento())
                 .cpfCnpj(launchTransient.get().getCpfCnpjDestino())
                 .build();
 
@@ -51,14 +52,14 @@ public class CashFlowService {
     private CashFlow cashFlowBuilder(Optional<Launch> launchTransient, CashFlow cashFlow) {
 
         if (launchTransient.get().getTipoLancamento().equalsIgnoreCase(RECEBIMENTO)){
-            addLaunchRecebimento(cashFlow, launchTransient);
+            addRecebimento(cashFlow, launchTransient);
         } else {
-            addLaunchPagamento(cashFlow,launchTransient);
+            addPagamento(cashFlow,launchTransient);
         }
         return addEncargo(cashFlow,launchTransient);
     }
 
-    private CashFlow addLaunchRecebimento(CashFlow cashFlow , Optional<Launch> launchTransient){
+    private CashFlow addRecebimento(CashFlow cashFlow , Optional<Launch> launchTransient){
         Optional<Entrada> entrada = launchTransient.map(this::parseToEntrada);
         Optional<List<Entrada>> entradaRepo = Optional.ofNullable(cashFlow.getEntradas());
         List<Entrada> nova = entradaRepo.map(ent ->{
@@ -77,7 +78,7 @@ public class CashFlowService {
                 .build();
     }
 
-    private CashFlow addLaunchPagamento(CashFlow cashFlow , Optional<Launch> launchTransient){
+    private CashFlow addPagamento(CashFlow cashFlow , Optional<Launch> launchTransient){
         Optional<Saida> saida = launchTransient.map(this::parseToSaida);
         Optional<List<Saida>> saidaRepo = Optional.ofNullable(cashFlow.getSaidas());
         List<Saida> nova = saidaRepo.map(sai ->{
@@ -127,5 +128,24 @@ public class CashFlowService {
             totalSaidas = saidas.stream().mapToDouble(entrada -> entrada.getValor().doubleValue()).sum();
         }
         return BigDecimal.valueOf(totalEntradas - totalSaidas);
+    }
+
+    private String compareDiaAtualDiaAnterior(CashFlow cashFlowDia){
+        Optional<CashFlow> cashFlowDiaAnterior = cashFlowRepository.findByCpfCnpjAndData(cashFlowDia.getCpfCnpj(), cashFlowDia.getData().minusDays(1));
+
+        BigDecimal diaAnterior = cashFlowDiaAnterior.map(total -> {
+            BigDecimal ret = total.getTotal();
+            return ret;
+        }).orElse(BigDecimal.ZERO);
+
+        if(diaAnterior.equals(BigDecimal.ZERO)){
+            return "0 %";
+        }
+
+        //((V2-V1)/V1 × 100)
+        BigDecimal posicaoDia = cashFlowDia.getTotal().subtract(diaAnterior)
+                                                      .divide(diaAnterior)
+                                                      .multiply(BigDecimal.valueOf(100));
+        return posicaoDia.toString() + " %";
     }
 }
