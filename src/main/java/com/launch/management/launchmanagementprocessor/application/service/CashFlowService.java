@@ -24,33 +24,33 @@ public class CashFlowService {
         Optional<CashFlow> cashFlowRepo = cashFlowRepository.findByCpfCnpj(launch.getCpfCnpjDestino());
 
         CashFlow cfTransiente = cashFlowRepo.map(cashFlow -> {
-            CashFlow cf = updateCashFlow(launch, launchTransient, cashFlow);
+            CashFlow cf = updateCashFlow(launchTransient, cashFlow);
             return cf;
-        }).orElse(insertCashFlow(launch,launchTransient));
+        }).orElse(insertCashFlow(launchTransient));
 
         cfTransiente.setTotal(totalDia(cfTransiente.getEntradas(), cfTransiente.getSaidas()));
 
         cashFlowRepository.save(cfTransiente);
     }
 
-    private CashFlow insertCashFlow(Launch launch, Optional<Launch> launchTransient) {
+    private CashFlow insertCashFlow(Optional<Launch> launchTransient) {
         CashFlow cashFlow = CashFlow.builder()
                 .data(LocalDate.now())
-                .cpfCnpj(launch.getCpfCnpjDestino())
+                .cpfCnpj(launchTransient.get().getCpfCnpjDestino())
                 .build();
 
-        return cashFlowBuilder(launch, launchTransient, cashFlow);
+        return cashFlowBuilder(launchTransient, cashFlow);
     }
 
 
 
-    private CashFlow updateCashFlow(Launch launch, Optional<Launch> launchTransient, CashFlow cashFlow) {
-        return cashFlowBuilder(launch, launchTransient, cashFlow);
+    private CashFlow updateCashFlow(Optional<Launch> launchTransient, CashFlow cashFlow) {
+        return cashFlowBuilder(launchTransient, cashFlow);
     }
 
-    private CashFlow cashFlowBuilder(Launch launch, Optional<Launch> launchTransient, CashFlow cashFlow) {
+    private CashFlow cashFlowBuilder(Optional<Launch> launchTransient, CashFlow cashFlow) {
 
-        if (launch.getTipoLancamento().equalsIgnoreCase(RECEBIMENTO)){
+        if (launchTransient.get().getTipoLancamento().equalsIgnoreCase(RECEBIMENTO)){
             addLaunchRecebimento(cashFlow, launchTransient);
         } else {
             addLaunchPagamento(cashFlow,launchTransient);
@@ -58,8 +58,8 @@ public class CashFlowService {
         return addEncargo(cashFlow,launchTransient);
     }
 
-    private CashFlow addLaunchRecebimento(CashFlow cashFlow , Optional<Launch> launch){
-        Optional<Entrada> entrada = launch.map(this::parseToEntrada);
+    private CashFlow addLaunchRecebimento(CashFlow cashFlow , Optional<Launch> launchTransient){
+        Optional<Entrada> entrada = launchTransient.map(this::parseToEntrada);
         Optional<List<Entrada>> entradaRepo = Optional.ofNullable(cashFlow.getEntradas());
         List<Entrada> nova = entradaRepo.map(ent ->{
             ent.add(entrada.get());
@@ -70,15 +70,15 @@ public class CashFlowService {
         return cashFlow;
     }
 
-    private Entrada parseToEntrada(Launch launch){
+    private Entrada parseToEntrada(Launch launchTransient){
         return Entrada.builder()
-                .data(launch.getDataLacamento())
-                .valor(launch.getValorLancamento())
+                .data(launchTransient.getDataLacamento())
+                .valor(launchTransient.getValorLancamento())
                 .build();
     }
 
-    private CashFlow addLaunchPagamento(CashFlow cashFlow , Optional<Launch> launch){
-        Optional<Saida> saida = launch.map(this::parseToSaida);
+    private CashFlow addLaunchPagamento(CashFlow cashFlow , Optional<Launch> launchTransient){
+        Optional<Saida> saida = launchTransient.map(this::parseToSaida);
         Optional<List<Saida>> saidaRepo = Optional.ofNullable(cashFlow.getSaidas());
         List<Saida> nova = saidaRepo.map(sai ->{
             sai.add(saida.get());
@@ -89,15 +89,15 @@ public class CashFlowService {
         return cashFlow;
     }
 
-    private Saida parseToSaida(Launch launch){
+    private Saida parseToSaida(Launch launchTransient){
         return Saida.builder()
-                .data(launch.getDataLacamento())
-                .valor(launch.getValorLancamento())
+                .data(launchTransient.getDataLacamento())
+                .valor(launchTransient.getValorLancamento())
                 .build();
     }
 
-    private CashFlow addEncargo(CashFlow cashFlow , Optional<Launch> launch){
-        Optional<Encargo> encargo = launch.map(this::parseToEncargo);
+    private CashFlow addEncargo(CashFlow cashFlow , Optional<Launch> launchTransient){
+        Optional<Encargo> encargo = launchTransient.map(this::parseToEncargo);
         Optional<List<Encargo>> encargoRepo = Optional.ofNullable(cashFlow.getEncargos());
         List<Encargo> nova = encargoRepo.map(enc ->{
             enc.add(encargo.get());
@@ -108,10 +108,10 @@ public class CashFlowService {
         return cashFlow;
     }
 
-    private Encargo parseToEncargo(Launch launch){
+    private Encargo parseToEncargo(Launch launchTransient){
         return Encargo.builder()
-                .data(launch.getDataLacamento())
-                .valor(launch.getEncargos())
+                .data(launchTransient.getDataLacamento())
+                .valor(launchTransient.getEncargos())
                 .build();
     }
 
