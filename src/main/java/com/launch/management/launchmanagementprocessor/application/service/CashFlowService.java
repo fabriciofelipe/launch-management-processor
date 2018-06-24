@@ -6,11 +6,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.DoubleStream;
 
 @Slf4j
 @Service
@@ -28,6 +27,8 @@ public class CashFlowService {
             CashFlow cf = updateCashFlow(launch, launchTransient, cashFlow);
             return cf;
         }).orElse(insertCashFlow(launch,launchTransient));
+
+        cfTransiente.setTotal(totalDia(cfTransiente.getEntradas(), cfTransiente.getSaidas()));
 
         cashFlowRepository.save(cfTransiente);
     }
@@ -48,6 +49,7 @@ public class CashFlowService {
     }
 
     private CashFlow cashFlowBuilder(Launch launch, Optional<Launch> launchTransient, CashFlow cashFlow) {
+
         if (launch.getTipoLancamento().equalsIgnoreCase(RECEBIMENTO)){
             addLaunchRecebimento(cashFlow, launchTransient);
         } else {
@@ -77,13 +79,13 @@ public class CashFlowService {
 
     private CashFlow addLaunchPagamento(CashFlow cashFlow , Optional<Launch> launch){
         Optional<Saida> saida = launch.map(this::parseToSaida);
-        if(cashFlow.getSaidas() == null){
-            List<Saida> nova = new ArrayList<>();
-            nova.add(saida.get());
-            cashFlow.setSaidas(nova);
-        } else {
-            cashFlow.getSaidas().add(saida.get());
-        }
+        Optional<List<Saida>> saidaRepo = Optional.ofNullable(cashFlow.getSaidas());
+        List<Saida> nova = saidaRepo.map(sai ->{
+            sai.add(saida.get());
+            return  sai;
+        }).orElse(new ArrayList<>(Collections.singleton(saida.get())));
+
+        cashFlow.setSaidas(nova);
         return cashFlow;
     }
 
@@ -96,13 +98,13 @@ public class CashFlowService {
 
     private CashFlow addEncargo(CashFlow cashFlow , Optional<Launch> launch){
         Optional<Encargo> encargo = launch.map(this::parseToEncargo);
-        if(cashFlow.getEncargos() == null && encargo.isPresent()){
-            List<Encargo> novo = new ArrayList<>();
-            novo.add(encargo.get());
-            cashFlow.setEncargos(novo);
-        } else if (encargo.isPresent()){
-            cashFlow.getEncargos().add(encargo.get());
-        }
+        Optional<List<Encargo>> encargoRepo = Optional.ofNullable(cashFlow.getEncargos());
+        List<Encargo> nova = encargoRepo.map(enc ->{
+            enc.add(encargo.get());
+            return  enc;
+        }).orElse(new ArrayList<>(Collections.singleton(encargo.get())));
+
+        cashFlow.setEncargos(nova);
         return cashFlow;
     }
 
@@ -113,4 +115,17 @@ public class CashFlowService {
                 .build();
     }
 
+    private BigDecimal totalDia(List<Entrada> entradas, List<Saida> saidas){
+
+        Double totalEntradas = 0d;
+        Double totalSaidas = 0d;
+
+        if (entradas != null){
+            totalEntradas = entradas.stream().mapToDouble(entrada -> entrada.getValor().doubleValue()).sum();
+        }
+        if (saidas != null) {
+            totalSaidas = saidas.stream().mapToDouble(entrada -> entrada.getValor().doubleValue()).sum();
+        }
+        return BigDecimal.valueOf(totalEntradas - totalSaidas);
+    }
 }
